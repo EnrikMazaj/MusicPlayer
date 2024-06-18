@@ -1,19 +1,20 @@
-import { View, Text, StyleSheet } from 'react-native'
-import React from 'react'
-import MusicPlayer from './screens/MusicPlayer'
+import React from 'react';
+import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import MusicPlayer from './screens/MusicPlayer';
 
 const App = () => {
   return (
     <View style={style.container}>
+      <StatusBar barStyle={'light-content'} />
       <MusicPlayer />
     </View>
-  )
+  );
 }
 
-export default App
+export default App;
 
 const style = StyleSheet.create({
   container: {
-    flex:1,
-  }
-})
+    flex: 1,
+  },
+});
