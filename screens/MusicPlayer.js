@@ -1,348 +1,224 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  Dimensions,
-  TouchableOpacity,
-  Image,
-  Animated,
-} from 'react-native';
-
-import TrackPlayer, {
-  Capability,
-  Event,
-  RepeatMode,
-  State,
-  usePlaybackState,
-  useProgress,
-  useTrackPlayerEvents,
-} from 'react-native-track-player';
-import Slider from '@react-native-community/slider';
+import React, { useState, useEffect, useRef } from 'react';
+import { Text, View, StyleSheet, Image, PanResponder } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import songs from '../model/data';
+import TrackPlayer, { Capability, State, usePlaybackState, useProgress, Event, useTrackPlayerEvents } from 'react-native-track-player';
+import { songs, images } from '../model/data'; // Adjust the path as needed
 
-const { width, height } = Dimensions.get('window');
-
-const setupPlayer = async () => {
-  try {
-    await TrackPlayer.setupPlayer();
-    await TrackPlayer.updateOptions({
-      capabilities: [
-        Capability.Play,
-        Capability.Pause,
-        Capability.SkipToNext,
-        Capability.SkipToPrevious,
-        Capability.Stop,
-      ],
-    });
-    await TrackPlayer.add(songs);
-  } catch (error) {
-    console.log(error);
-  }
+const formatTime = (seconds) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 };
 
-const togglePlayBack = async (playBackState) => {
-  const currentTrack = await TrackPlayer.getCurrentTrack();
-  if (currentTrack != null) {
-    if (playBackState === State.Paused || playBackState === State.Ready) {
-      await TrackPlayer.play();
-    } else {
-      await TrackPlayer.pause();
-    }
-  }
-};
-
-const MusicPlayer = () => {
+const SingleButtonPage = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
   const playBackState = usePlaybackState();
-  const progress = useProgress();
-  const [songIndex, setsongIndex] = useState(0);
-  const [repeatMode, setRepeatMode] = useState('off');
-  const [trackTitle, setTrackTitle] = useState();
-  const [trackArtist, setTrackArtist] = useState();
-  const [trackArtwork, setTrackArtwork] = useState();
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const songSlider = useRef(null);
+  const { position, duration } = useProgress();
+  const isPlayerInitialized = useRef(false);
+  const progressBarRef = useRef(null);
+  const [progressWidth, setProgressWidth] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekPosition, setSeekPosition] = useState(0);
 
-  useTrackPlayerEvents([Event.PlaybackTrackChanged], async (event) => {
-    if (event.type === Event.PlaybackTrackChanged && event.nextTrack !== null) {
-      const track = await TrackPlayer.getTrack(event.nextTrack);
-      const { title, artwork, artist } = track;
-      setTrackTitle(title);
-      setTrackArtist(artist);
-      setTrackArtwork(artwork);
+  useEffect(() => {
+    const setupPlayer = async () => {
+      if (!isPlayerInitialized.current) {
+        await TrackPlayer.setupPlayer();
+        await TrackPlayer.updateOptions({
+          capabilities: [
+            Capability.Play,
+            Capability.Pause,
+            Capability.SkipToNext,
+            Capability.SkipToPrevious,
+            Capability.Stop,
+          ],
+        });
+        isPlayerInitialized.current = true;
+        await TrackPlayer.add([songs[currentIndex]]);
+      }
+    };
+
+    setupPlayer();
+
+    return () => {
+      TrackPlayer.stop();
+    };
+  }, []);
+
+  useEffect(() => {
+    const loadTrack = async () => {
+      if (isPlayerInitialized.current) {
+        await TrackPlayer.reset();
+        await TrackPlayer.add([songs[currentIndex]]);
+        if (isPlaying) {
+          await TrackPlayer.play();
+        }
+      }
+    };
+
+    loadTrack();
+  }, [currentIndex]);
+
+  useTrackPlayerEvents([Event.PlaybackState, Event.PlaybackQueueEnded], (event) => {
+    console.log("Playback state changed:", event.state);
+    if (event.type === Event.PlaybackQueueEnded) {
+      setCurrentIndex((prevIndex) => (prevIndex === songs.length - 1 ? 0 : prevIndex + 1));
+    } else {
+      setIsPlaying(event.state === State.Playing);
     }
   });
 
-  const repeatIcon = () => {
-    if (repeatMode === 'off') {
-      return 'repeat-off';
-    }
-
-    if (repeatMode === 'track') {
-      return 'repeat-once';
-    }
-
-    if (repeatMode === 'repeat') {
-      return 'repeat';
-    }
-  };
-
-  const changeRepeatMode = () => {
-    if (repeatMode === 'off') {
-      TrackPlayer.setRepeatMode(RepeatMode.Track);
-      setRepeatMode('track');
-    } else if (repeatMode === 'track') {
-      TrackPlayer.setRepeatMode(RepeatMode.Queue);
-      setRepeatMode('repeat');
-    } else if (repeatMode === 'repeat') {
-      TrackPlayer.setRepeatMode(RepeatMode.Off);
-      setRepeatMode('off');
-    }
-  };
-
-  const skipTo = async (trackId) => {
-    await TrackPlayer.skip(trackId);
-  };
-
   useEffect(() => {
-    const initializePlayer = async () => {
-      await setupPlayer();
+    console.log("Current position:", position);
+    console.log("Song duration:", duration);
+  }, [position, duration]);
 
-      const listener = scrollX.addListener(({ value }) => {
-        const index = Math.round(value / width);
-        if (index !== songIndex) {
-          skipTo(index);
-          setsongIndex(index);
-        }
-      });
-
-      return () => {
-        scrollX.removeListener(listener);
-        TrackPlayer.destroy();
-      };
-    };
-
-    initializePlayer();
-  }, []);
-
-  const skipToNext = () => {
-    if (songIndex < songs.length - 1) {
-      songSlider.current.scrollToOffset({
-        offset: (songIndex + 1) * width,
-      });
+  const handlePlayPress = async () => {
+    const playerState = await TrackPlayer.getState();
+    console.log("Player state before handling play press:", playerState);
+    if (playerState === State.Playing) {
+      await TrackPlayer.pause();
+    } else if (playerState === State.Paused || playerState === State.Ready || playerState === State.Stopped) {
+      await TrackPlayer.play();
     }
+    console.log("Player state after handling play press:", await TrackPlayer.getState());
   };
 
-  const skipToPrevious = () => {
-    if (songIndex > 0) {
-      songSlider.current.scrollToOffset({
-        offset: (songIndex - 1) * width,
-      });
-    }
+  const handleBackPress = () => {
+    setCurrentIndex((prevIndex) => (prevIndex === 0 ? images.length - 1 : prevIndex - 1));
   };
 
-  const renderSongs = ({ item }) => {
-    console.log('Rendering song:', item);
-    return (
-      <Animated.View style={style.mainWrapper}>
-        <View style={[style.imageWrapper, style.elevation]}>
-          <Image
-            source={{ uri: String(item.artwork) }}
-            style={style.musicImage}
-          />
-        </View>
-      </Animated.View>
-    );
+  const handleForwardPress = () => {
+    setCurrentIndex((prevIndex) => (prevIndex === images.length - 1 ? 0 : prevIndex + 1));
   };
+
+  const getProgress = () => {
+    return position / duration || 0;
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setIsSeeking(true);
+      },
+      onPanResponderMove: (event, gestureState) => {
+        const newPosition = Math.max(0, Math.min(gestureState.dx, progressWidth));
+        setSeekPosition(newPosition);
+      },
+      onPanResponderRelease: async (event, gestureState) => {
+        const newPosition = Math.max(0, Math.min(gestureState.dx, progressWidth));
+        const newProgress = newPosition / progressWidth;
+        const newTrackPosition = newProgress * duration;
+        await TrackPlayer.seekTo(newTrackPosition);
+        setIsSeeking(false);
+      },
+    })
+  ).current;
 
   return (
-    <SafeAreaView style={style.container}>
-      {/* music player section */}
-      <View style={style.mainContainer}>
-        {/* Image */}
-        <Animated.FlatList
-          ref={songSlider}
-          renderItem={renderSongs}
-          data={songs}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          scrollEventThrottle={16}
-          onScroll={Animated.event(
-            [
+    <View style={styles.container}>
+      <Text style={styles.title}>{songs[currentIndex].title}</Text>
+      <Text style={styles.artist}>{songs[currentIndex].artist}</Text>
+      <Image source={images[currentIndex]} style={styles.image} />
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBar} {...panResponder.panHandlers} ref={progressBarRef}>
+          <View style={[styles.progress, { width: `${getProgress() * 100}%` }]} />
+          <View
+            style={[
+              styles.progressBall,
               {
-                nativeEvent: {
-                  contentOffset: { x: scrollX },
-                },
+                left: `${getProgress() * 100}%`,
+                transform: [{ translateX: -10 }],
               },
-            ],
-            { useNativeDriver: true },
-          )}
-        />
-
-        {/* Title & Artist Name */}
-        <View>
-          <Text style={[style.songContent, style.songTitle]}>{trackTitle}</Text>
-          <Text style={[style.songContent, style.songArtist]}>{trackArtist}</Text>
-        </View>
-
-        {/* song slider */}
-        <View>
-          <Slider
-            style={style.progressBar}
-            value={progress.position}
-            minimumValue={0}
-            maximumValue={progress.duration}
-            thumbTintColor="#FFD369"
-            minimumTrackTintColor="#FFD369"
-            maximumTrackTintColor="#fff"
-            onSlidingComplete={async (value) => {
-              await TrackPlayer.seekTo(value);
-            }}
+            ]}
           />
-
-          {/* Progress Durations */}
-          <View style={style.progressLevelDuration}>
-            <Text style={style.progressLabelText}>
-              {new Date(progress.position * 1000).toISOString().substr(14, 5)}
-            </Text>
-            <Text style={style.progressLabelText}>
-              {new Date((progress.duration - progress.position) * 1000).toISOString().substr(14, 5)}
-            </Text>
-          </View>
         </View>
-
-        {/* music control */}
-        <View style={style.musicControlsContainer}>
-          <TouchableOpacity onPress={skipToPrevious}>
-            <Ionicons name="play-skip-back-outline" size={35} color="#FFD369" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => togglePlayBack(playBackState)}>
-            <Ionicons
-              name={playBackState === State.Playing ? 'pause-outline' : 'play-outline'}
-              size={75}
-              color="#FFD369"
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={skipToNext}>
-            <Ionicons name="play-skip-forward-outline" size={35} color="#FFD369" />
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.progressText}>{formatTime(position)} / {formatTime(duration)}</Text>
       </View>
-
-      {/* bottom section */}
-      <View style={style.bottomSection}>
-        <View style={style.bottomIconContainer}>
-          <TouchableOpacity onPress={() => {}}>
-            <Ionicons name="heart-outline" size={30} color="#888888" />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={changeRepeatMode}>
-            <MaterialCommunityIcons
-              name={`${repeatIcon()}`}
-              size={30}
-              color={repeatMode !== 'off' ? '#FFD369' : '#888888'}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => {}}>
-            <Ionicons name="share-outline" size={30} color="#888888" />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => {}}>
-            <Ionicons name="ellipsis-horizontal" size={30} color="#888888" />
-          </TouchableOpacity>
-        </View>
+      <View style={styles.buttonContainer}>
+        <Ionicons name="arrow-down-circle-outline" size={32} color="black" />
+        <Ionicons name="caret-back-outline" size={32} color="black" onPress={handleBackPress} />
+        <Ionicons 
+          name={isPlaying ? "pause-outline" : "play-outline"} 
+          size={32} 
+          color="black" 
+          onPress={handlePlayPress} 
+        />
+        <Ionicons name="caret-forward-outline" size={32} color="black" onPress={handleForwardPress} />
+        <Ionicons name="heart-outline" size={32} color="black" />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
-export default MusicPlayer;
+export default SingleButtonPage;
 
-const style = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#222831',
-  },
-  mainContainer: {
-    flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  bottomSection: {
-    borderTopColor: '#393E46',
-    borderWidth: 1,
-    width: width,
     alignItems: 'center',
-    paddingVertical: 15,
+    backgroundColor: '#d3e0ea',  // Nice background color
+    paddingHorizontal: 20,
   },
-  bottomIconContainer: {
+  image: {
+    width: '90%',
+    height: '50%',
+    borderRadius: 20,
+    marginVertical: 20,
+  },
+  buttonContainer: {
     flexDirection: 'row',
+    borderRadius:15,
     justifyContent: 'space-between',
-    width: '80%',
-  },
-  mainWrapper: {
-    width: width,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 25,
-  },
-  imageWrapper: {
-    width: 300,
-    height: 340,
-    marginBottom: 25,
-  },
-  musicImage: {
+    backgroundColor: '#f5fcff',
     width: '100%',
-    height: '100%',
-    borderRadius: 15,
+    height: 70,
+    borderTopWidth: 1,
+    borderTopColor: '#ccc',
+    paddingHorizontal: 10,
   },
-  elevation: {
-    elevation: 5,
-    shadowColor: '#ccc',
-    shadowOffset: {
-      width: 5,
-      height: 5,
-    },
-    shadowOpacity: 0.5,
-    shadowRadius: 3.84,
-  },
-  songContent: {
-    textAlign: 'center',
-    color: '#EEEEEE',
-  },
-  songTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  songArtist: {
-    fontSize: 16,
-    fontWeight: '300',
+  progressContainer: {
+    width: '100%',
+    marginTop: 20,
+    marginBottom: 20,
   },
   progressBar: {
-    width: 350,
-    height: 40,
-    marginTop: 25,
-    flexDirection: 'row',
+    height: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 5,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  progressLevelDuration: {
-    width: 340,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  progress: {
+    height: '100%',
+    backgroundColor: '#000900',
   },
-  progressLabelText: {
-    color: '#FFF',
+  progressBall: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#000900',
+    top: -5,
   },
-  musicControlsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 15,
-    width: '60%',
+  progressText: {
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  artist: {
+    fontSize: 18,
+    textAlign: 'center',
+    color: '#555',
+    marginBottom: 10,
   },
 });
