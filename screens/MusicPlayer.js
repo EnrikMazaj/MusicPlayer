@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Text, View, StyleSheet, Image, PanResponder } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import TrackPlayer, { Capability, State, usePlaybackState, useProgress, Event, useTrackPlayerEvents } from 'react-native-track-player';
-import { songs, images } from '../model/data'; // Adjust the path as needed
+import { songs, images } from '../model/data'; 
 
 const formatTime = (seconds) => {
   const mins = Math.floor(seconds / 60);
