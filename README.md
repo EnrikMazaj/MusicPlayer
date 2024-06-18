@@ -1,3 +1,8 @@
+![image](https://github.com/EnrikMazaj/MusicPlayer/assets/132377397/15b524cb-fd30-4f40-a2a0-9df7a5c28f4a)
+
+
+
+
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 # Getting Started
