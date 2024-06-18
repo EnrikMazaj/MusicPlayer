@@ -15,7 +15,7 @@ const songs = [
   },
   {
     id: '3',
-    url: require('../assets/audio/500-KB-MP3.mp3'),
+    url: require('../assets/audio/test3.mp3'),
     title: 'Amorgos Island',
     artist: 'Malamas',
   },

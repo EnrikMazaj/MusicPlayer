@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#d3e0ea',  // Nice background color
+    backgroundColor: '#EF9C66',  
     paddingHorizontal: 20,
   },
   image: {
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     borderRadius:15,
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f5fcff',
+    backgroundColor: '#FCDC94',
     width: '100%',
     height: 70,
     borderTopWidth: 1,
@@ -196,14 +196,14 @@ const styles = StyleSheet.create({
   },
   progress: {
     height: '100%',
-    backgroundColor: '#000900',
+    backgroundColor: '#FCDC94',
   },
   progressBall: {
     position: 'absolute',
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#000900',
+    backgroundColor: '#373A40',
     top: -5,
   },
   progressText: {
@@ -213,12 +213,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: '#373A40',
     textAlign: 'center',
   },
   artist: {
     fontSize: 18,
     textAlign: 'center',
-    color: '#555',
+    color: '#373A40',
     marginBottom: 10,
   },
 });
