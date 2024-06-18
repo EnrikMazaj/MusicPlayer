@@ -61,7 +61,6 @@ const SingleButtonPage = () => {
   }, [currentIndex]);
 
   useTrackPlayerEvents([Event.PlaybackState, Event.PlaybackQueueEnded], (event) => {
-    console.log("Playback state changed:", event.state);
     if (event.type === Event.PlaybackQueueEnded) {
       setCurrentIndex((prevIndex) => (prevIndex === songs.length - 1 ? 0 : prevIndex + 1));
     } else {
@@ -76,13 +75,11 @@ const SingleButtonPage = () => {
 
   const handlePlayPress = async () => {
     const playerState = await TrackPlayer.getState();
-    console.log("Player state before handling play press:", playerState);
     if (playerState === State.Playing) {
       await TrackPlayer.pause();
     } else if (playerState === State.Paused || playerState === State.Ready || playerState === State.Stopped) {
       await TrackPlayer.play();
     }
-    console.log("Player state after handling play press:", await TrackPlayer.getState());
   };
 
   const handleBackPress = () => {
